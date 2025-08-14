@@ -1,358 +1,442 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Switch } from "@/components/ui/switch";
-import { ChevronUp, Printer, Copy, Link as LinkIcon, Search, Sparkles } from "lucide-react";
-
-// —— 工具函数 ——
-function useHighlight(query: string) {
-  return (text: string) => {
-    if (!query) return text;
-    const idx = text.toLowerCase().indexOf(query.toLowerCase());
-    if (idx === -1) return text;
-    const before = text.slice(0, idx);
-    const match = text.slice(idx, idx + query.length);
-    const after = text.slice(idx + query.length);
-    return (
-      <>
-        {before}
-        <mark className="rounded px-0.5">{match}</mark>
-        {after}
-      </>
-    );
-  };
-}
-
-function useTOCHighlight(ids: string[]) {
-  const [current, setCurrent] = useState(ids[0] || "");
-  useEffect(() => {
-    const handlers: IntersectionObserver[] = [];
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        if (visible[0]) setCurrent(visible[0].target.id);
-      },
-      { rootMargin: "-20% 0px -70% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] }
-    );
-    ids.forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
-  }, [ids.join(",")]);
-  return current;
-}
-
-// —— 数据 ——
-const outline = [
-  { id: "overview", title: "1. 项目概述", tags: ["pitch"], content: (
-    <>
-      <p className="mb-2">项目名：<b>Rules Jigsawing Lab（规则拼接实验室）</b></p>
-      <p className="mb-2">一句话：跨越 <b>RimWorld（宏观）→ The Sims（中观）→ BG3/DOS2（微观）</b> 的多层规则拼接沙盘，让玩家与 AI 共同生成超级涌现的可玩世界与故事。</p>
-      <ul className="list-disc ml-5 space-y-1">
-        <li>三层规则协议化：事件/状态/角色可在不同粒度玩法间无缝传递。</li>
-        <li>AI 内容转化协议：<b>Intent Graph</b> + <b>跨层状态同步</b>，实现语义映射、规则约束保持、涌现放大。</li>
-        <li>叙事锚点 + 涌现回放：宏观决策可复现为微观可玩副本，并生成小说级战役记录。</li>
-      </ul>
-    </>
-  )},
-  { id: "goals", title: "2. 设计目标", tags: ["design"], content: (
-    <ul className="list-disc ml-5 space-y-1">
-      <li>建立统一的 <b>底层抽象规则沙盘</b>（状态机 + 事件驱动 + 资源模型）。</li>
-      <li>提供 <b>跨层因果可见性</b>（宏观→中观→微观 无缝链路）。</li>
-      <li>实现 <b>UGC 超级涌现</b>：战役可保存/改编/分享。</li>
-    </ul>
-  )},
-  { id: "layers", title: "3. 三层玩法结构", tags: ["design", "tech"], content: (
-    <Tabs defaultValue="rim">
-      <TabsList className="grid grid-cols-3 w-full">
-        <TabsTrigger value="rim">RimWorld（宏观）</TabsTrigger>
-        <TabsTrigger value="sims">The Sims（中观）</TabsTrigger>
-        <TabsTrigger value="bg3">BG3/DOS2（微观）</TabsTrigger>
-      </TabsList>
-      <TabsContent value="rim">
-        <Card>
-          <CardHeader><CardTitle>宏观层</CardTitle></CardHeader>
-          <CardContent>
-            <ul className="list-disc ml-5 space-y-1">
-              <li>玩法：资源管理、殖民地运营、基于规则的 Storyteller 叙事生成。</li>
-              <li>AI：规则执行者与随机事件生成器。</li>
-              <li>跨层输出：饥荒 → Sims 层“找食物”；边境冲突 → 微观“交易/战斗”。</li>
-            </ul>
-          </CardContent>
-        </Card>
-      </TabsContent>
-      <TabsContent value="sims">
-        <Card>
-          <CardHeader><CardTitle>中观层</CardTitle></CardHeader>
-          <CardContent>
-            <ul className="list-disc ml-5 space-y-1">
-              <li>玩法：个体人格、需求（Needs）、社交网络、情绪系统。</li>
-              <li>AI：Autonomy + Affordance（优先级/可用性）做选择。</li>
-              <li>跨层输出：决定资源获取途径 → 微观战斗/交易；关系/情绪回流宏观。</li>
-            </ul>
-          </CardContent>
-        </Card>
-      </TabsContent>
-      <TabsContent value="bg3">
-        <Card>
-          <CardHeader><CardTitle>微观层</CardTitle></CardHeader>
-          <CardContent>
-            <ul className="list-disc ml-5 space-y-1">
-              <li>玩法：即时战术、复杂条件判定、分支剧情。</li>
-              <li>AI：战术规划 + 情境演绎（近似桌游 DM）。</li>
-              <li>跨层输出：胜/败、资源/关系变化向上同步。</li>
-            </ul>
-          </CardContent>
-        </Card>
-      </TabsContent>
-    </Tabs>
-  )},
-  { id: "protocols", title: "4. AI 内容转化协议", tags: ["tech"], content: (
-    <>
-      <Accordion type="single" collapsible>
-        <AccordionItem value="sem">
-          <AccordionTrigger>4.1 事件语义转译（Intent Graph）</AccordionTrigger>
-          <AccordionContent>
-            <p className="mb-2">将宏观事件映射为中观任务，再拆解为微观行为序列。</p>
-            <p>示例：缺粮 → Sims “寻找/交易/求助” → 微观“集市交易”或“战斗抢粮”。</p>
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="rules">
-          <AccordionTrigger>4.2 规则约束保持（状态同步 + 成本/延迟）</AccordionTrigger>
-          <AccordionContent>
-            <p>确保微观层不可通过外挂行为破坏宏观平衡；关键变量双向同步并附带时间/资源成本。</p>
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="emerge">
-          <AccordionTrigger>4.3 涌现控制与放大</AccordionTrigger>
-          <AccordionContent>
-            <p>检测罕见组合与关键转折（如“援军及时到达逆转战局”），在叙事与奖励层放大呈现。</p>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-    </>
-  )},
-  { id: "kernel", title: "5. 底层抽象规则沙盘", tags: ["tech"], content: (
-    <>
-      <ul className="list-disc ml-5 space-y-1">
-        <li>原子原语：移动、获取、生产、社交、战斗、传递信息。</li>
-        <li>世界内核：状态机 + 事件驱动 + 物理/逻辑资源模型。</li>
-        <li>参考：Factorio / Dwarf Fortress / Unreal GAS。</li>
-      </ul>
-      <div className="mt-4 p-4 bg-muted rounded-xl">
-        <p className="text-sm opacity-80 mb-2">层间数据流（示意）</p>
-        <svg viewBox="0 0 800 220" className="w-full h-[220px]">
-          <defs>
-            <linearGradient id="g1" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#60a5fa"/>
-              <stop offset="100%" stopColor="#34d399"/>
-            </linearGradient>
-          </defs>
-          <rect x="20" y="30" width="220" height="70" rx="12" fill="url(#g1)" opacity="0.2"/>
-          <text x="130" y="70" textAnchor="middle" className="fill-foreground">RimWorld 宏观</text>
-          <rect x="290" y="30" width="220" height="70" rx="12" fill="url(#g1)" opacity="0.2"/>
-          <text x="400" y="70" textAnchor="middle" className="fill-foreground">The Sims 中观</text>
-          <rect x="560" y="30" width="220" height="70" rx="12" fill="url(#g1)" opacity="0.2"/>
-          <text x="670" y="70" textAnchor="middle" className="fill-foreground">BG3/DOS2 微观</text>
-          <path d="M240,65 L290,65" stroke="#22c55e" strokeWidth="3" markerEnd="url(#arrow)"/>
-          <path d="M510,65 L560,65" stroke="#22c55e" strokeWidth="3" markerEnd="url(#arrow)"/>
-          <path d="M560,95 C560,150 240,150 240,95" stroke="#93c5fd" strokeWidth="2" fill="none" markerEnd="url(#arrow)"/>
-          <defs>
-            <marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto">
-              <path d="M0,0 L8,4 L0,8 Z" fill="#22c55e" />
-            </marker>
-          </defs>
-        </svg>
-      </div>
-    </>
-  )},
-  { id: "vars", title: "6. 核心变量集", tags: ["tech", "design"], content: (
-    <ul className="list-disc ml-5 space-y-1">
-      <li>资源、情绪、关系强度、安全度、威望、科技等级（<b>三层共享</b>）。</li>
-      <li>用于保证跨层因果可追溯、可解释、可复盘。</li>
-    </ul>
-  )},
-  { id: "events", title: "7. 事件系统", tags: ["design", "tech"], content: (
-    <>
-      <p className="mb-2">核心玩法：派遣随从（或亲自出征）解决大小事件。</p>
-      <ul className="list-disc ml-5 space-y-1">
-        <li>事件属性：ID、名称、前端描述（AI生成）、后端描述（AI推理题面）、建议技能、演出机制。</li>
-        <li>类型：常规事件（中小任务）/ 副本事件（大型多环节集群）。</li>
-        <li>交互：<b>快速决策</b>（直接派遣） / <b>沉浸体验</b>（AI自然语言演出/微观副本）。</li>
-        <li>演出：战斗演出 / 建造演出 / 自然语言演出（mini DND DM）。</li>
-        <li>世界AI：记录客观事件，持续更新世界设定。</li>
-      </ul>
-    </>
-  )},
-  { id: "anchors", title: "8. 叙事锚点 & 涌现回放", tags: ["design"], content: (
-    <>
-      <p className="mb-2">宏观事件生成可进入的微观副本入口；AI 复现战役流程并生成小说回放。</p>
-      <ul className="list-disc ml-5 space-y-1">
-        <li>动态插入：援军到达、敌方反攻、天气/地形变更等。</li>
-        <li>回放形式：关键帧时间线 + 变量变化 + 二次游玩入口。</li>
-        <li>UGC：战役卡片（小说+地图+事件链）可保存、改编、分享。</li>
-      </ul>
-    </>
-  )},
-  { id: "companions", title: "9. 角色与随从系统", tags: ["design"], content: (
-    <>
-      <p className="mb-2">招募/创建：<b>Contextual Engineering</b>（玩家喂数据/标注 → 人设与技能树）。</p>
-      <ul className="list-disc ml-5 space-y-1">
-        <li>属性：士气（稳定性评估）、力量、智力、魅力；可扩展的额外/特殊属性。</li>
-        <li>性格：名称 + 描述，影响 AI 决策 Prompt。</li>
-        <li>关系网：友情/亲情/爱情 + 共同回忆 + 性格匹配；与见闻系统区分。</li>
-        <li>持有物：无限制 Inventory；AI 知晓物品用途。</li>
-        <li>状态与倾向：The Sims 风格 Needs，动态影响行为优先级。</li>
-        <li>记忆：短期（Working Memory）/ 长期（Diary）/ 见闻（K&B + 感官 + Influence Bridge）。</li>
-      </ul>
-    </>
-  )},
-  { id: "systems", title: "10. 战斗 · 建造 · 经济", tags: ["design"], content: (
-    <ul className="list-disc ml-5 space-y-1">
-      <li>战斗：BG3 战术框架 + DOS2 环境互动（高低差/表面/控场门槛）。</li>
-      <li>建造：RimWorld 式设施布局（早期低优）。</li>
-      <li>经济：NPC 打工、建筑营收、增量收益循环。</li>
-    </ul>
-  )},
-  { id: "loop", title: "11. 玩法循环", tags: ["design"], content: (
-    <ol className="list-decimal ml-5 space-y-1">
-      <li>宏观：战略决策 → 触发跨层事件。</li>
-      <li>中观：个体 AI 执行计划 → 社交/情绪波动。</li>
-      <li>微观：战术战斗/剧情体验。</li>
-      <li>结果回流：核心变量更新，影响世界状态。</li>
-      <li>回放与UGC：保存/改编战役卡片。</li>
-    </ol>
-  )},
-  { id: "ugc", title: "12. UGC 与生态", tags: ["pitch"], content: (
-    <ul className="list-disc ml-5 space-y-1">
-      <li>战役卡片：小说 + 地图 + 事件链，可一键分享。</li>
-      <li>创作工具：Intent Graph 可视编排面板，玩家扩展规则拼接。</li>
-      <li>生态循环：创作者 → 玩法模组 → 市场分发（官方精选扶持）。</li>
-    </ul>
-  )},
-  { id: "value", title: "13. Pitch 价值点", tags: ["pitch"], content: (
-    <ul className="list-disc ml-5 space-y-1">
-      <li>技术亮点：跨层协议、Intent Graph、世界状态同步、AI 叙事复现。</li>
-      <li>玩法亮点：三层无缝切换、因果链可见、动态副本与小说回放。</li>
-      <li>商业模式：基础包 + UGC 市场 + 高级 AI 订阅。</li>
-      <li>差异化：首个将 RimWorld–Sims–BG3 融合为可编排涌现沙盘的产品。</li>
-    </ul>
-  )}
-];
-
-export default function PitchInteractivePage() {
-  const [query, setQuery] = useState("");
-  const [audience, setAudience] = useState<{pitch: boolean; design: boolean; tech: boolean}>({ pitch: true, design: true, tech: true });
-  const ids = outline.map(o => o.id);
-  const current = useTOCHighlight(ids);
-  const hi = useHighlight(query);
-
-  const filtered = useMemo(() => {
-    return outline.filter(sec => {
-      const tagOk = sec.tags.some(t => (audience as any)[t]);
-      if (!tagOk) return false;
-      if (!query) return true;
-      const text = (sec.title + " " + (typeof sec.content === "string" ? sec.content : "")).toLowerCase();
-      return text.includes(query.toLowerCase());
-    });
-  }, [query, audience]);
-
-  const copyLink = (id: string) => {
-    const url = new URL(window.location.href);
-    url.hash = id;
-    navigator.clipboard.writeText(url.toString());
-  };
-
-  useEffect(() => {
-    if (window.location.hash) {
-      const id = window.location.hash.replace('#','');
-      setTimeout(() => {
-        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>规则拼接实验室 · 互动式 Pitch（单文件）</title>
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
     }
-  }, []);
+    html, body { height: 100%; }
+    /* 简单的 prose 风格 */
+    .prose p { margin-bottom: .5rem; }
+    .prose ul { list-style: disc; padding-left: 1.25rem; }
+    .prose ol { list-style: decimal; padding-left: 1.25rem; }
+    mark { background: rgb(250 204 21 / .3); }
+    /* 卡片阴影与圆角近似 shadcn */
+    .card { @apply rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm; }
+    .muted { @apply bg-slate-100 dark:bg-slate-800; }
+    .btn { @apply inline-flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm transition; }
+    .btn:hover { @apply bg-slate-100 dark:bg-slate-800; }
+    .btn-outline { @apply bg-transparent; }
+    .btn-ghost { @apply border-transparent; }
+    .badge { @apply inline-flex items-center rounded-full border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-xs; }
+    .input { @apply w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 px-3 py-1.5 text-sm; }
+    .sticky-header { backdrop-filter: saturate(180%) blur(10px); background-color: color-mix(in oklab, transparent 60%, var(--tw-bg-opacity) 40%); }
+  </style>
+  <!-- React 18 UMD + Babel for JSX in browser -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-b from-white to-slate-100 dark:from-slate-950 dark:to-slate-900 text-slate-900 dark:text-slate-100">
+  <div id="root"></div>
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 text-foreground">
-      <header className="sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Sparkles className="w-5 h-5" />
-          <h1 className="font-semibold tracking-tight">规则拼接实验室 · 互动式 Pitch</h1>
-          <div className="ml-auto flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => window.print()} title="导出为 PDF"><Printer className="w-4 h-4 mr-1"/>导出</Button>
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-2 top-2.5 opacity-60"/>
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索关键词…" className="pl-8 w-56"/>
-            </div>
-          </div>
-        </div>
-      </header>
+  <script type="text/babel">
+    const { useMemo, useState, useEffect, useRef, Fragment } = React;
 
-      <main className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-12 gap-6">
-        {/* 目录侧栏 */}
-        <aside className="hidden lg:block col-span-3">
-          <Card className="sticky top-20">
-            <CardHeader>
-              <CardTitle className="text-base">目录</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <nav className="space-y-1">
-                {outline.map((s) => (
-                  <a key={s.id} href={`#${s.id}`} className={`block text-sm rounded px-2 py-1 hover:bg-muted transition ${current===s.id?"bg-muted font-medium":""}`}>{s.title}</a>
-                ))}
-              </nav>
-              <div className="mt-4 space-y-2">
-                <p className="text-xs opacity-70">受众筛选</p>
-                <div className="flex items-center justify-between text-sm">
-                  <span>Pitch</span>
-                  <Switch checked={audience.pitch} onCheckedChange={(v)=>setAudience(a=>({...a,pitch:!!v}))}/>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span>设计</span>
-                  <Switch checked={audience.design} onCheckedChange={(v)=>setAudience(a=>({...a,design:!!v}))}/>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span>技术</span>
-                  <Switch checked={audience.tech} onCheckedChange={(v)=>setAudience(a=>({...a,tech:!!v}))}/>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </aside>
+    // —— Icons（极简内联版本）——
+    const Icon = ({d, size=20, className=""}) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d={d} />
+      </svg>
+    );
+    const Sparkles = (p)=> <Icon {...p} d="M5 3v4M3 5h4m9-2v4m-2-2h4M6 17l2 4 2-4m8-2l1.5 3 1.5-3M3 11l1.5 3L6 11"/>;
+    const Printer  = (p)=> <Icon {...p} d="M6 9V2h12v7M6 18h12v4H6zm-3-5h18v5H3z"/>;
+    const LinkIcon = (p)=> <Icon {...p} d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1"/>;
+    const SearchIc = (p)=> <Icon {...p} d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/>;
+    const ChevronUp= (p)=> <Icon {...p} d="M18 15l-6-6-6 6"/>;
 
-        {/* 内容区 */}
-        <section className="col-span-12 lg:col-span-9 space-y-6">
-          {filtered.map((sec) => (
-            <Card key={sec.id} id={sec.id} className="scroll-mt-24">
-              <CardHeader className="flex-row items-center justify-between gap-2">
-                <CardTitle className="text-lg">{hi(sec.title as string)}</CardTitle>
-                <div className="flex items-center gap-2">
-                  {sec.tags.map(t => <Badge key={t} variant="secondary" className="capitalize">{t}</Badge>)}
-                  <Button variant="ghost" size="icon" onClick={()=> copyLink(sec.id)} title="复制段落链接"><LinkIcon className="w-4 h-4"/></Button>
-                </div>
-              </CardHeader>
-              <CardContent className="prose prose-sm max-w-none dark:prose-invert">
-                {typeof sec.content === 'string' ? hi(sec.content) : sec.content}
+    // —— 轻量 UI 组件（替代 shadcn）——
+    const Button = ({ variant="outline", size="sm", className="", children, ...rest }) => (
+      <button className={`btn ${variant==='ghost'?'btn-ghost':'btn-outline'} ${className}`} {...rest}>{children}</button>
+    );
+    const Input  = (props) => <input className="input" {...props} />
+    const Card   = ({className="", children}) => <div className={`card ${className}`}>{children}</div>
+    const CardHeader = ({className="", children}) => <div className={`px-4 py-3 border-b border-slate-200/60 dark:border-slate-800/60 ${className}`}>{children}</div>
+    const CardTitle  = ({className="", children}) => <h3 className={`font-semibold ${className}`}>{children}</h3>
+    const CardContent= ({className="", children}) => <div className={`px-4 py-4 ${className}`}>{children}</div>
+    const Badge  = ({children, className=""}) => <span className={`badge ${className}`}>{children}</span>
+
+    // Tabs
+    const Tabs = ({defaultValue, children}) => {
+      const [value, setValue] = useState(defaultValue);
+      return <div className="w-full">{React.Children.map(children, child => React.cloneElement(child, {value, setValue}))}</div>;
+    };
+    const TabsList = ({className="", children, value, setValue}) => <div className={`rounded-xl border dark:border-slate-800 p-1 ${className}`}>{children}</div>;
+    const TabsTrigger = ({value:val, value, setValue, children}) => (
+      <button onClick={()=>setValue(val)} className={`px-3 py-1.5 text-sm rounded-lg transition ${value===val? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900':'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>{children}</button>
+    );
+    const TabsContent = ({value: tabVal, value, children}) => value===tabVal? <div className="mt-3">{children}</div>: null;
+
+    // Accordion（单开）
+    const Accordion = ({type='single', collapsible=true, children}) => {
+      const [open, setOpen] = useState(null);
+      const toggle = (key) => setOpen(prev => prev===key ? (collapsible? null : prev) : key);
+      return React.Children.map(children, (child, idx) => React.cloneElement(child, {open, toggle}));
+    };
+    const AccordionItem = ({value, children, open, toggle}) => React.Children.map(children, c=> React.cloneElement(c, {value, open, toggle}));
+    const AccordionTrigger = ({children, value, open, toggle}) => (
+      <button onClick={()=>toggle(value)} className="w-full flex items-center justify-between py-2">
+        <span className="font-medium">{children}</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" className={`transition ${open===value?'-rotate-180':''}`}><path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round"/></svg>
+      </button>
+    );
+    const AccordionContent = ({children, value, open}) => open===value ? (<div className="pt-1 text-sm text-slate-700 dark:text-slate-300">{children}</div>): null;
+
+    // Switch（简化）
+    const Switch = ({checked, onChange}) => (
+      <label className="inline-flex items-center cursor-pointer select-none">
+        <input type="checkbox" className="hidden" checked={checked} onChange={e=>onChange(e.target.checked)} />
+        <span className={`w-10 h-6 rounded-full transition ${checked?'bg-slate-900 dark:bg-white':'bg-slate-300 dark:bg-slate-700'}`}>
+          <span className={`block w-5 h-5 bg-white dark:bg-slate-900 rounded-full transform transition translate-y-0.5 ${checked?'translate-x-5':'translate-x-0.5'}`}></span>
+        </span>
+      </label>
+    );
+
+    // —— 工具函数 ——
+    function useHighlight(query) {
+      return (text) => {
+        if (!query || typeof text !== 'string') return text;
+        const idx = text.toLowerCase().indexOf(query.toLowerCase());
+        if (idx === -1) return text;
+        const before = text.slice(0, idx);
+        const match = text.slice(idx, idx + query.length);
+        const after = text.slice(idx + query.length);
+        return (<Fragment>{before}<mark className="rounded px-0.5">{match}</mark>{after}</Fragment>);
+      };
+    }
+
+    function useTOCHighlight(ids) {
+      const [current, setCurrent] = useState(ids[0] || "");
+      useEffect(() => {
+        const observer = new IntersectionObserver((entries) => {
+          const visible = entries.filter(e=>e.isIntersecting).sort((a,b)=> b.intersectionRatio - a.intersectionRatio);
+          if (visible[0]) setCurrent(visible[0].target.id);
+        }, { rootMargin: "-20% 0px -70% 0px", threshold: [0, .25, .5, .75, 1] });
+        ids.forEach(id => { const el = document.getElementById(id); if (el) observer.observe(el); });
+        return ()=>observer.disconnect();
+      }, [ids.join(",")]);
+      return current;
+    }
+
+    // —— 数据 ——
+    const outline = [
+      { id: "overview", title: "1. 项目概述", tags: ["pitch"], content: (
+        <>
+          <p className="mb-2">项目名：<b>Rules Jigsawing Lab（规则拼接实验室）</b></p>
+          <p className="mb-2">一句话：跨越 <b>RimWorld（宏观）→ The Sims（中观）→ BG3/DOS2（微观）</b> 的多层规则拼接沙盘，让玩家与 AI 共同生成超级涌现的可玩世界与故事。</p>
+          <ul className="space-y-1">
+            <li>三层规则协议化：事件/状态/角色可在不同粒度玩法间无缝传递。</li>
+            <li>AI 内容转化协议：<b>Intent Graph</b> + <b>跨层状态同步</b>，实现语义映射、规则约束保持、涌现放大。</li>
+            <li>叙事锚点 + 涌现回放：宏观决策可复现为微观可玩副本，并生成小说级战役记录。</li>
+          </ul>
+        </>
+      )},
+      { id: "goals", title: "2. 设计目标", tags: ["design"], content: (
+        <ul className="space-y-1">
+          <li>建立统一的 <b>底层抽象规则沙盘</b>（状态机 + 事件驱动 + 资源模型）。</li>
+          <li>提供 <b>跨层因果可见性</b>（宏观→中观→微观 无缝链路）。</li>
+          <li>实现 <b>UGC 超级涌现</b>：战役可保存/改编/分享。</li>
+        </ul>
+      )},
+      { id: "layers", title: "3. 三层玩法结构", tags: ["design", "tech"], content: (
+        <Tabs defaultValue="rim">
+          <TabsList className="grid grid-cols-3 w-full">
+            <TabsTrigger value="rim">RimWorld（宏观）</TabsTrigger>
+            <TabsTrigger value="sims">The Sims（中观）</TabsTrigger>
+            <TabsTrigger value="bg3">BG3/DOS2（微观）</TabsTrigger>
+          </TabsList>
+          <TabsContent value="rim">
+            <Card>
+              <CardHeader><CardTitle>宏观层</CardTitle></CardHeader>
+              <CardContent>
+                <ul className="space-y-1">
+                  <li>玩法：资源管理、殖民地运营、基于规则的 Storyteller 叙事生成。</li>
+                  <li>AI：规则执行者与随机事件生成器。</li>
+                  <li>跨层输出：饥荒 → Sims 层“找食物”；边境冲突 → 微观“交易/战斗”。</li>
+                </ul>
               </CardContent>
             </Card>
-          ))}
-
-          <div className="flex justify-end">
-            <Button onClick={() => window.scrollTo({top:0, behavior:'smooth'})} variant="outline"><ChevronUp className="w-4 h-4 mr-1"/>回到顶部</Button>
+          </TabsContent>
+          <TabsContent value="sims">
+            <Card>
+              <CardHeader><CardTitle>中观层</CardTitle></CardHeader>
+              <CardContent>
+                <ul className="space-y-1">
+                  <li>玩法：个体人格、需求（Needs）、社交网络、情绪系统。</li>
+                  <li>AI：Autonomy + Affordance（优先级/可用性）做选择。</li>
+                  <li>跨层输出：决定资源获取途径 → 微观战斗/交易；关系/情绪回流宏观。</li>
+                </ul>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="bg3">
+            <Card>
+              <CardHeader><CardTitle>微观层</CardTitle></CardHeader>
+              <CardContent>
+                <ul className="space-y-1">
+                  <li>玩法：即时战术、复杂条件判定、分支剧情。</li>
+                  <li>AI：战术规划 + 情境演绎（近似桌游 DM）。</li>
+                  <li>跨层输出：胜/败、资源/关系变化向上同步。</li>
+                </ul>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )},
+      { id: "protocols", title: "4. AI 内容转化协议", tags: ["tech"], content: (
+        <>
+          <Accordion type="single" collapsible>
+            <AccordionItem value="sem">
+              <AccordionTrigger>4.1 事件语义转译（Intent Graph）</AccordionTrigger>
+              <AccordionContent>
+                <p className="mb-2">将宏观事件映射为中观任务，再拆解为微观行为序列。</p>
+                <p>示例：缺粮 → Sims “寻找/交易/求助” → 微观“集市交易”或“战斗抢粮”。</p>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="rules">
+              <AccordionTrigger>4.2 规则约束保持（状态同步 + 成本/延迟）</AccordionTrigger>
+              <AccordionContent>
+                <p>确保微观层不可通过外挂行为破坏宏观平衡；关键变量双向同步并附带时间/资源成本。</p>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="emerge">
+              <AccordionTrigger>4.3 涌现控制与放大</AccordionTrigger>
+              <AccordionContent>
+                <p>检测罕见组合与关键转折（如“援军及时到达逆转战局”），在叙事与奖励层放大呈现。</p>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </>
+      )},
+      { id: "kernel", title: "5. 底层抽象规则沙盘", tags: ["tech"], content: (
+        <>
+          <ul className="space-y-1">
+            <li>原子原语：移动、获取、生产、社交、战斗、传递信息。</li>
+            <li>世界内核：状态机 + 事件驱动 + 物理/逻辑资源模型。</li>
+            <li>参考：Factorio / Dwarf Fortress / Unreal GAS。</li>
+          </ul>
+          <div className="mt-4 p-4 muted rounded-xl">
+            <p className="text-sm opacity-80 mb-2">层间数据流（示意）</p>
+            <svg viewBox="0 0 800 220" className="w-full h-[220px]">
+              <defs>
+                <linearGradient id="g1" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#60a5fa"/>
+                  <stop offset="100%" stopColor="#34d399"/>
+                </linearGradient>
+              </defs>
+              <rect x="20" y="30" width="220" height="70" rx="12" fill="url(#g1)" opacity="0.2"/>
+              <text x="130" y="70" textAnchor="middle" className="fill-current">RimWorld 宏观</text>
+              <rect x="290" y="30" width="220" height="70" rx="12" fill="url(#g1)" opacity="0.2"/>
+              <text x="400" y="70" textAnchor="middle" className="fill-current">The Sims 中观</text>
+              <rect x="560" y="30" width="220" height="70" rx="12" fill="url(#g1)" opacity="0.2"/>
+              <text x="670" y="70" textAnchor="middle" className="fill-current">BG3/DOS2 微观</text>
+              <defs>
+                <marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto">
+                  <path d="M0,0 L8,4 L0,8 Z" fill="#22c55e" />
+                </marker>
+              </defs>
+              <path d="M240,65 L290,65" stroke="#22c55e" strokeWidth="3" markerEnd="url(#arrow)"/>
+              <path d="M510,65 L560,65" stroke="#22c55e" strokeWidth="3" markerEnd="url(#arrow)"/>
+              <path d="M560,95 C560,150 240,150 240,95" stroke="#93c5fd" strokeWidth="2" fill="none" markerEnd="url(#arrow)"/>
+            </svg>
           </div>
-        </section>
-      </main>
+        </>
+      )},
+      { id: "vars", title: "6. 核心变量集", tags: ["tech", "design"], content: (
+        <ul className="space-y-1">
+          <li>资源、情绪、关系强度、安全度、威望、科技等级（<b>三层共享</b>）。</li>
+          <li>用于保证跨层因果可追溯、可解释、可复盘。</li>
+        </ul>
+      )},
+      { id: "events", title: "7. 事件系统", tags: ["design", "tech"], content: (
+        <>
+          <p className="mb-2">核心玩法：派遣随从（或亲自出征）解决大小事件。</p>
+          <ul className="space-y-1">
+            <li>事件属性：ID、名称、前端描述（AI生成）、后端描述（AI推理题面）、建议技能、演出机制。</li>
+            <li>类型：常规事件（中小任务）/ 副本事件（大型多环节集群）。</li>
+            <li>交互：<b>快速决策</b>（直接派遣） / <b>沉浸体验</b>（AI自然语言演出/微观副本）。</li>
+            <li>演出：战斗演出 / 建造演出 / 自然语言演出（mini DND DM）。</li>
+            <li>世界AI：记录客观事件，持续更新世界设定。</li>
+          </ul>
+        </>
+      )},
+      { id: "anchors", title: "8. 叙事锚点 & 涌现回放", tags: ["design"], content: (
+        <>
+          <p className="mb-2">宏观事件生成可进入的微观副本入口；AI 复现战役流程并生成小说回放。</p>
+          <ul className="space-y-1">
+            <li>动态插入：援军到达、敌方反攻、天气/地形变更等。</li>
+            <li>回放形式：关键帧时间线 + 变量变化 + 二次游玩入口。</li>
+            <li>UGC：战役卡片（小说+地图+事件链）可保存、改编、分享。</li>
+          </ul>
+        </>
+      )},
+      { id: "companions", title: "9. 角色与随从系统", tags: ["design"], content: (
+        <>
+          <p className="mb-2">招募/创建：<b>Contextual Engineering</b>（玩家喂数据/标注 → 人设与技能树）。</p>
+          <ul className="space-y-1">
+            <li>属性：士气（稳定性评估）、力量、智力、魅力；可扩展的额外/特殊属性。</li>
+            <li>性格：名称 + 描述，影响 AI 决策 Prompt。</li>
+            <li>关系网：友情/亲情/爱情 + 共同回忆 + 性格匹配；与见闻系统区分。</li>
+            <li>持有物：无限制 Inventory；AI 知晓物品用途。</li>
+            <li>状态与倾向：The Sims 风格 Needs，动态影响行为优先级。</li>
+            <li>记忆：短期（Working Memory）/ 长期（Diary）/ 见闻（K&B + 感官 + Influence Bridge）。</li>
+          </ul>
+        </>
+      )},
+      { id: "systems", title: "10. 战斗 · 建造 · 经济", tags: ["design"], content: (
+        <ul className="space-y-1">
+          <li>战斗：BG3 战术框架 + DOS2 环境互动（高低差/表面/控场门槛）。</li>
+          <li>建造：RimWorld 式设施布局（早期低优）。</li>
+          <li>经济：NPC 打工、建筑营收、增量收益循环。</li>
+        </ul>
+      )},
+      { id: "loop", title: "11. 玩法循环", tags: ["design"], content: (
+        <ol className="space-y-1 list-decimal pl-5">
+          <li>宏观：战略决策 → 触发跨层事件。</li>
+          <li>中观：个体 AI 执行计划 → 社交/情绪波动。</li>
+          <li>微观：战术战斗/剧情体验。</li>
+          <li>结果回流：核心变量更新，影响世界状态。</li>
+          <li>回放与UGC：保存/改编战役卡片。</li>
+        </ol>
+      )},
+      { id: "ugc", title: "12. UGC 与生态", tags: ["pitch"], content: (
+        <ul className="space-y-1">
+          <li>战役卡片：小说 + 地图 + 事件链，可一键分享。</li>
+          <li>创作工具：Intent Graph 可视编排面板，玩家扩展规则拼接。</li>
+          <li>生态循环：创作者 → 玩法模组 → 市场分发（官方精选扶持）。</li>
+        </ul>
+      )},
+      { id: "value", title: "13. Pitch 价值点", tags: ["pitch"], content: (
+        <ul className="space-y-1">
+          <li>技术亮点：跨层协议、Intent Graph、世界状态同步、AI 叙事复现。</li>
+          <li>玩法亮点：三层无缝切换、因果链可见、动态副本与小说回放。</li>
+          <li>商业模式：基础包 + UGC 市场 + 高级 AI 订阅。</li>
+          <li>差异化：首个将 RimWorld–Sims–BG3 融合为可编排涌现沙盘的产品。</li>
+        </ul>
+      )}
+    ];
 
-      <footer className="border-t py-6 text-center text-sm opacity-80">
-        Rules Jigsawing Lab · 交互式 GDD 预览 | © 4D Games
-      </footer>
-    </div>
-  );
-}
+    function PitchInteractivePage() {
+      const [query, setQuery] = useState("");
+      const [audience, setAudience] = useState({ pitch: true, design: true, tech: true });
+      const ids = outline.map(o => o.id);
+      const current = useTOCHighlight(ids);
+      const hi = useHighlight(query);
+
+      const filtered = useMemo(() => {
+        return outline.filter(sec => {
+          const tagOk = sec.tags.some(t => audience[t]);
+          if (!tagOk) return false;
+          if (!query) return true;
+          const titleText = typeof sec.title === 'string' ? sec.title : '';
+          const contentText = typeof sec.content === 'string' ? sec.content : '';
+          const text = (titleText + ' ' + contentText).toLowerCase();
+          return text.includes(query.toLowerCase());
+        });
+      }, [query, audience]);
+
+      const copyLink = async (id) => {
+        const url = new URL(window.location.href);
+        url.hash = id;
+        try { await navigator.clipboard.writeText(url.toString()); alert('段落链接已复制'); } catch { /* ignore */ }
+      };
+
+      useEffect(() => {
+        if (window.location.hash) {
+          const id = window.location.hash.replace('#','');
+          setTimeout(() => {
+            document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
+        }
+      }, []);
+
+      return (
+        <div className="min-h-screen">
+          <header className="sticky top-0 z-30 border-b border-slate-200/70 dark:border-slate-800/70 sticky-header">
+            <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+              <Sparkles className="w-5 h-5" />
+              <h1 className="font-semibold tracking-tight">规则拼接实验室 · 互动式 Pitch</h1>
+              <div className="ml-auto flex items-center gap-2">
+                <Button onClick={() => window.print()} title="导出为 PDF"><Printer className="w-4 h-4 mr-1 inline"/>导出</Button>
+                <div className="relative">
+                  <SearchIc className="w-4 h-4 absolute left-2 top-2.5 opacity-60"/>
+                  <Input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="搜索关键词…" style={{paddingLeft:'2rem', width:'14rem'}}/>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <main className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-12 gap-6">
+            {/* 目录侧栏 */}
+            <aside className="hidden lg:block col-span-3">
+              <Card className="sticky top-20">
+                <CardHeader>
+                  <CardTitle className="text-base">目录</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <nav className="space-y-1">
+                    {outline.map((s) => (
+                      <a key={s.id} href={`#${s.id}`} className={`block text-sm rounded px-2 py-1 transition ${current===s.id?"bg-slate-100 dark:bg-slate-800 font-medium":"hover:bg-slate-100 dark:hover:bg-slate-800"}`}>{s.title}</a>
+                    ))}
+                  </nav>
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs opacity-70">受众筛选</p>
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Pitch</span>
+                      <Switch checked={audience.pitch} onChange={(v)=>setAudience(a=>({...a,pitch:!!v}))}/>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span>设计</span>
+                      <Switch checked={audience.design} onChange={(v)=>setAudience(a=>({...a,design:!!v}))}/>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span>技术</span>
+                      <Switch checked={audience.tech} onChange={(v)=>setAudience(a=>({...a,tech:!!v}))}/>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </aside>
+
+            {/* 内容区 */}
+            <section className="col-span-12 lg:col-span-9 space-y-6">
+              {filtered.map((sec) => (
+                <Card key={sec.id} id={sec.id} className="scroll-mt-24">
+                  <CardHeader className="flex flex-row items-center justify-between gap-2">
+                    <CardTitle className="text-lg">{hi(sec.title)}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      {sec.tags.map(t => <span key={t} className="badge capitalize">{t}</span>)}
+                      <Button className="btn-ghost" onClick={()=>copyLink(sec.id)} title="复制段落链接"><LinkIcon className="w-4 h-4"/></Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="prose prose-sm max-w-none">
+                    {typeof sec.content === 'string' ? hi(sec.content) : sec.content}
+                  </CardContent>
+                </Card>
+              ))}
+
+              <div className="flex justify-end">
+                <Button onClick={() => window.scrollTo({top:0, behavior:'smooth'})}>
+                  <ChevronUp className="w-4 h-4 mr-1 inline"/>回到顶部
+                </Button>
+              </div>
+            </section>
+          </main>
+
+          <footer className="border-t border-slate-200/70 dark:border-slate-800/70 py-6 text-center text-sm opacity-80">
+            Rules Jigsawing Lab · 交互式 GDD 预览 | © 4D Games
+          </footer>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<PitchInteractivePage/>);
+  </script>
+</body>
+</html>
