@@ -7,25 +7,60 @@
   <!-- Tailwind (CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    :root {
-      color-scheme: light dark;
-    }
+    :root { color-scheme: light dark; }
     html, body { height: 100%; }
-    /* 简单的 prose 风格 */
     .prose p { margin-bottom: .5rem; }
     .prose ul { list-style: disc; padding-left: 1.25rem; }
     .prose ol { list-style: decimal; padding-left: 1.25rem; }
     mark { background: rgb(250 204 21 / .3); }
-    /* 卡片阴影与圆角近似 shadcn */
-    .card { @apply rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 shadow-sm; }
-    .muted { @apply bg-slate-100 dark:bg-slate-800; }
-    .btn { @apply inline-flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm transition; }
-    .btn:hover { @apply bg-slate-100 dark:bg-slate-800; }
-    .btn-outline { @apply bg-transparent; }
-    .btn-ghost { @apply border-transparent; }
-    .badge { @apply inline-flex items-center rounded-full border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-xs; }
-    .input { @apply w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 px-3 py-1.5 text-sm; }
-    .sticky-header { backdrop-filter: saturate(180%) blur(10px); background-color: color-mix(in oklab, transparent 60%, var(--tw-bg-opacity) 40%); }
+
+    /* —— 纯 CSS（去掉 @apply，CDN 版 Tailwind 不支持在 <style> 里用 @apply）—— */
+    .card {
+      border-radius: 1rem; /* ≈ rounded-2xl */
+      border: 1px solid rgba(100,116,139,.35); /* slate-500-ish */
+      background: rgba(255,255,255,.7);
+      box-shadow: 0 1px 2px rgba(0,0,0,.06);
+    }
+    @media (prefers-color-scheme: dark) {
+      .card { background: rgba(2,6,23,.6); border-color: rgba(51,65,85,.6); }
+    }
+    .muted { background: rgba(241,245,249,.9); }
+    @media (prefers-color-scheme: dark) { .muted { background: rgba(30,41,59,.9); } }
+
+    .btn {
+      display:inline-flex; align-items:center; justify-content:center;
+      border-radius: .75rem; border:1px solid rgba(148,163,184,.7);
+      padding:.375rem .75rem; font-size:.875rem; line-height:1.25rem;
+      background: transparent; transition: background .15s ease;
+    }
+    .btn:hover { background: rgba(241,245,249,.8); }
+    @media (prefers-color-scheme: dark) { .btn:hover { background: rgba(30,41,59,.9); } }
+    .btn-ghost { border-color: transparent; }
+
+    .badge {
+      display:inline-flex; align-items:center; border-radius:9999px;
+      border:1px solid rgba(148,163,184,.7); padding:.125rem .5rem; font-size:.75rem;
+    }
+    .input {
+      width:100%; border-radius:.75rem; border:1px solid rgba(148,163,184,.7);
+      background: rgba(255,255,255,.8); padding:.375rem .75rem; font-size:.875rem;
+    }
+    @media (prefers-color-scheme: dark) { .input { background: rgba(2,6,23,.8); border-color: rgba(51,65,85,.8); color: #e5e7eb; } }
+
+    .sticky-header { backdrop-filter: saturate(180%) blur(10px); background: rgba(255,255,255,.55); }
+    @media (prefers-color-scheme: dark) { .sticky-header { background: rgba(2,6,23,.55); } }
+
+    /* —— 表格：边框、对齐、暗色支持 —— */
+    table { width:100%; border-collapse: collapse; font-size:.875rem; }
+    thead th {
+      background:#f8fafc; color:#0f172a; font-weight:600; text-align:left;
+      padding:.5rem .75rem; position:sticky; top:0; z-index:1;
+    }
+    tbody td { padding:.5rem .75rem; border-top:1px solid rgba(148,163,184,.35); vertical-align: top; }
+    @media (prefers-color-scheme: dark) {
+      thead th { background:#0f172a; color:#e5e7eb; }
+      tbody td { border-top-color: rgba(51,65,85,.7); color:#e5e7eb; }
+    }
   </style>
   <!-- React 18 UMD + Babel for JSX in browser -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -36,9 +71,9 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useMemo, useState, useEffect, useRef, Fragment } = React;
+    const { useMemo, useState, useEffect, Fragment } = React;
 
-    // —— Icons（极简内联版本）——
+    // —— Icons ——
     const Icon = ({d, size=20, className=""}) => (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
         <path d={d} />
@@ -50,8 +85,8 @@
     const SearchIc = (p)=> <Icon {...p} d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/>;
     const ChevronUp= (p)=> <Icon {...p} d="M18 15l-6-6-6 6"/>;
 
-    // —— 轻量 UI 组件（替代 shadcn）——
-    const Button = ({ variant="outline", size="sm", className="", children, ...rest }) => (
+    // —— 轻量 UI ——
+    const Button = ({ variant="outline", className="", children, ...rest }) => (
       <button className={`btn ${variant==='ghost'?'btn-ghost':'btn-outline'} ${className}`} {...rest}>{children}</button>
     );
     const Input  = (props) => <input className="input" {...props} />
@@ -59,25 +94,17 @@
     const CardHeader = ({className="", children}) => <div className={`px-4 py-3 border-b border-slate-200/60 dark:border-slate-800/60 ${className}`}>{children}</div>
     const CardTitle  = ({className="", children}) => <h3 className={`font-semibold ${className}`}>{children}</h3>
     const CardContent= ({className="", children}) => <div className={`px-4 py-4 ${className}`}>{children}</div>
-    const Badge  = ({children, className=""}) => <span className={`badge ${className}`}>{children}</span>
 
     // Tabs
-    const Tabs = ({defaultValue, children}) => {
-      const [value, setValue] = useState(defaultValue);
-      return <div className="w-full">{React.Children.map(children, child => React.cloneElement(child, {value, setValue}))}</div>;
-    };
-    const TabsList = ({className="", children, value, setValue}) => <div className={`rounded-xl border dark:border-slate-800 p-1 ${className}`}>{children}</div>;
+    const Tabs = ({defaultValue, children}) => { const [value, setValue] = useState(defaultValue); return <div>{React.Children.map(children, c=>React.cloneElement(c,{value,setValue}))}</div> };
+    const TabsList = ({className="", children}) => <div className={`rounded-xl border dark:border-slate-800 p-1 ${className}`}>{children}</div>;
     const TabsTrigger = ({value:val, value, setValue, children}) => (
       <button onClick={()=>setValue(val)} className={`px-3 py-1.5 text-sm rounded-lg transition ${value===val? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900':'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>{children}</button>
     );
     const TabsContent = ({value: tabVal, value, children}) => value===tabVal? <div className="mt-3">{children}</div>: null;
 
     // Accordion（单开）
-    const Accordion = ({type='single', collapsible=true, children}) => {
-      const [open, setOpen] = useState(null);
-      const toggle = (key) => setOpen(prev => prev===key ? (collapsible? null : prev) : key);
-      return React.Children.map(children, (child, idx) => React.cloneElement(child, {open, toggle}));
-    };
+    const Accordion = ({children}) => { const [open, setOpen] = useState(null); const toggle = (k)=> setOpen(p=>p===k? null : k); return React.Children.map(children, (child)=>React.cloneElement(child,{open,toggle})) };
     const AccordionItem = ({value, children, open, toggle}) => React.Children.map(children, c=> React.cloneElement(c, {value, open, toggle}));
     const AccordionTrigger = ({children, value, open, toggle}) => (
       <button onClick={()=>toggle(value)} className="w-full flex items-center justify-between py-2">
@@ -87,17 +114,7 @@
     );
     const AccordionContent = ({children, value, open}) => open===value ? (<div className="pt-1 text-sm text-slate-700 dark:text-slate-300">{children}</div>): null;
 
-    // Switch（简化）
-    const Switch = ({checked, onChange}) => (
-      <label className="inline-flex items-center cursor-pointer select-none">
-        <input type="checkbox" className="hidden" checked={checked} onChange={e=>onChange(e.target.checked)} />
-        <span className={`w-10 h-6 rounded-full transition ${checked?'bg-slate-900 dark:bg-white':'bg-slate-300 dark:bg-slate-700'}`}>
-          <span className={`block w-5 h-5 bg-white dark:bg-slate-900 rounded-full transform transition translate-y-0.5 ${checked?'translate-x-5':'translate-x-0.5'}`}></span>
-        </span>
-      </label>
-    );
-
-    // —— 工具函数 ——
+    // —— 工具 ——
     function useHighlight(query) {
       return (text) => {
         if (!query || typeof text !== 'string') return text;
@@ -109,7 +126,6 @@
         return (<Fragment>{before}<mark className="rounded px-0.5">{match}</mark>{after}</Fragment>);
       };
     }
-
     function useTOCHighlight(ids) {
       const [current, setCurrent] = useState(ids[0] || "");
       useEffect(() => {
@@ -123,27 +139,40 @@
       return current;
     }
 
-    // —— 数据 ——
+    // —— 数据（根据你的新文本重写）——
     const outline = [
-      { id: "overview", title: "1. 项目概述", tags: ["pitch"], content: (
+      { id: 'overview', title: '1. 项目概述', tags:['pitch'], content: (
         <>
-          <p className="mb-2">项目名：<b>Rules Jigsawing Lab（规则拼接实验室）</b></p>
-          <p className="mb-2">一句话：跨越 <b>RimWorld（宏观）→ The Sims（中观）→ BG3/DOS2（微观）</b> 的多层规则拼接沙盘，让玩家与 AI 共同生成超级涌现的可玩世界与故事。</p>
-          <ul className="space-y-1">
-            <li>三层规则协议化：事件/状态/角色可在不同粒度玩法间无缝传递。</li>
-            <li>AI 内容转化协议：<b>Intent Graph</b> + <b>跨层状态同步</b>，实现语义映射、规则约束保持、涌现放大。</li>
-            <li>叙事锚点 + 涌现回放：宏观决策可复现为微观可玩副本，并生成小说级战役记录。</li>
+          <p>项目名：<b>Rules Jigsawing Lab（规则拼接实验室）</b></p>
+          <p>一句话卖点：一个跨越 <b>RimWorld（宏观）→ The Sims（中观）→ BG3/DOS2（微观）</b> 的多层规则拼接沙盘，让玩家与 AI 共同生成超级涌现的可玩世界和故事。</p>
+          <p className="font-medium">核心创新</p>
+          <ul>
+            <li>三层规则协议化：事件、状态、角色信息可在不同粒度的玩法间无缝传递。</li>
+            <li>AI 内容转化协议：<b>Intent Graph</b> + 跨层状态同步，确保事件语义映射、规则约束保持、涌现可控放大。</li>
+            <li>叙事锚点 + 涌现回放系统：宏观决策可被 AI 复现为微观可玩副本，同时生成小说级战役记录。</li>
           </ul>
+          <div className="mt-4">
+            <table>
+              <thead>
+                <tr><th>层级</th><th>代表作</th><th>我们如何拼接</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>宏观</td><td>RimWorld</td><td>将资源/危机事件转译为中观任务入口</td></tr>
+                <tr><td>中观</td><td>The Sims</td><td>以人格与 Needs 驱动行为，输出微观战斗/交互</td></tr>
+                <tr><td>微观</td><td>BG3 / DOS2</td><td>战术与剧情结果回流至上层变量</td></tr>
+              </tbody>
+            </table>
+          </div>
         </>
-      )},
-      { id: "goals", title: "2. 设计目标", tags: ["design"], content: (
-        <ul className="space-y-1">
-          <li>建立统一的 <b>底层抽象规则沙盘</b>（状态机 + 事件驱动 + 资源模型）。</li>
-          <li>提供 <b>跨层因果可见性</b>（宏观→中观→微观 无缝链路）。</li>
-          <li>实现 <b>UGC 超级涌现</b>：战役可保存/改编/分享。</li>
-        </ul>
-      )},
-      { id: "layers", title: "3. 三层玩法结构", tags: ["design", "tech"], content: (
+      ) },
+      { id: 'goals', title: '2. 设计目标', tags:['design'], content: (
+        <ol className="pl-5">
+          <li>建立统一的底层抽象规则沙盘（状态机 + 事件驱动 + 资源模型）</li>
+          <li>保证跨层因果可见，形成宏观—中观—微观的无缝链路</li>
+          <li>让 UGC 具备跨玩法涌现潜力</li>
+        </ol>
+      ) },
+      { id: 'layers', title: '3. 三层玩法结构', tags:['design','tech'], content: (
         <Tabs defaultValue="rim">
           <TabsList className="grid grid-cols-3 w-full">
             <TabsTrigger value="rim">RimWorld（宏观）</TabsTrigger>
@@ -154,10 +183,10 @@
             <Card>
               <CardHeader><CardTitle>宏观层</CardTitle></CardHeader>
               <CardContent>
-                <ul className="space-y-1">
-                  <li>玩法：资源管理、殖民地运营、基于规则的 Storyteller 叙事生成。</li>
-                  <li>AI：规则执行者与随机事件生成器。</li>
-                  <li>跨层输出：饥荒 → Sims 层“找食物”；边境冲突 → 微观“交易/战斗”。</li>
+                <ul>
+                  <li>核心玩法：资源管理、殖民地运营、基于规则的 Storyteller 叙事生成。</li>
+                  <li>AI 定位：规则执行者与随机事件生成器。</li>
+                  <li>跨层输出示例：饥荒 → Sims 层“找食物” → 微观“交易/战斗”。</li>
                 </ul>
               </CardContent>
             </Card>
@@ -166,10 +195,10 @@
             <Card>
               <CardHeader><CardTitle>中观层</CardTitle></CardHeader>
               <CardContent>
-                <ul className="space-y-1">
-                  <li>玩法：个体人格、需求（Needs）、社交网络、情绪系统。</li>
-                  <li>AI：Autonomy + Affordance（优先级/可用性）做选择。</li>
-                  <li>跨层输出：决定资源获取途径 → 微观战斗/交易；关系/情绪回流宏观。</li>
+                <ul>
+                  <li>核心玩法：个体人格、需求（Needs）、社交网络、情绪系统。</li>
+                  <li>AI 定位：基于优先级与可用性（Autonomy + Affordance）。</li>
+                  <li>跨层输出示例：决定获取资源途径 → 引发微观战斗/交易。</li>
                 </ul>
               </CardContent>
             </Card>
@@ -178,180 +207,302 @@
             <Card>
               <CardHeader><CardTitle>微观层</CardTitle></CardHeader>
               <CardContent>
-                <ul className="space-y-1">
-                  <li>玩法：即时战术、复杂条件判定、分支剧情。</li>
-                  <li>AI：战术规划 + 情境演绎（近似桌游 DM）。</li>
-                  <li>跨层输出：胜/败、资源/关系变化向上同步。</li>
+                <ul>
+                  <li>核心玩法：即时战术战斗、复杂条件判定、分支剧情。</li>
+                  <li>AI 定位：战术规划与情境演绎（类似桌游 DM）。</li>
+                  <li>跨层输出：胜败结果、资源变动、关系修正。</li>
                 </ul>
               </CardContent>
             </Card>
           </TabsContent>
+          <div className="mt-4">
+            <table>
+              <thead>
+                <tr><th>维度</th><th>宏观</th><th>中观</th><th>微观</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>时间粒度</td><td>天/周</td><td>小时/日</td><td>回合/秒</td></tr>
+                <tr><td>主要变量</td><td>资源、安全度、威望</td><td>关系、情绪、需求</td><td>状态、位置、技能冷却</td></tr>
+                <tr><td>输出到上层</td><td>—</td><td>关系变更→宏观外交</td><td>战果/损耗→资源与士气</td></tr>
+              </tbody>
+            </table>
+          </div>
         </Tabs>
-      )},
-      { id: "protocols", title: "4. AI 内容转化协议", tags: ["tech"], content: (
+      ) },
+      { id: 'protocols', title: '4. AI 内容转化协议', tags:['tech'], content: (
+        <Accordion>
+          <AccordionItem value="sem">
+            <AccordionTrigger>4.1 事件语义转译（Intent Graph）</AccordionTrigger>
+            <AccordionContent>
+              <p>Intent Graph 映射宏观事件 → 中观任务 → 微观行为序列。</p>
+              <p className="text-xs opacity-80">示例：缺粮 → Sims “寻找/交易/求助” → 微观“集市交易”或“战斗抢粮”。</p>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="rules">
+            <AccordionTrigger>4.2 规则约束保持（状态同步 + 成本/延迟）</AccordionTrigger>
+            <AccordionContent>
+              <p>跨层状态同步协议，附带时间与资源成本，避免下层“外挂”破坏上层平衡。</p>
+              <table className="mt-2">
+                <thead><tr><th>变量</th><th>方向</th><th>同步规则</th></tr></thead>
+                <tbody>
+                  <tr><td>资源</td><td>微观→宏观</td><td>结算回流，含损耗与延迟</td></tr>
+                  <tr><td>关系</td><td>中观↔微观</td><td>阈值触发剧情/外交修正</td></tr>
+                  <tr><td>安全度</td><td>宏观→微观</td><td>影响敌对生成与遭遇频率</td></tr>
+                </tbody>
+              </table>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="emerge">
+            <AccordionTrigger>4.3 涌现控制与放大</AccordionTrigger>
+            <AccordionContent>
+              <p>检测罕见组合、关键转折，进行叙事放大与奖励触发。</p>
+              <div className="mt-2 p-3 rounded-xl muted">
+                <svg viewBox="0 0 600 120" className="w-full h-[120px]">
+                  <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#60a5fa"/><stop offset="100%" stopColor="#34d399"/></linearGradient></defs>
+                  <path d="M20 80 C 120 20, 220 100, 320 40 S 520 60, 580 30" fill="none" stroke="url(#lg)" strokeWidth="3"/>
+                  <circle cx="120" cy="55" r="5" fill="#60a5fa"/><text x="130" y="50" fontSize="12">罕见组合检测</text>
+                  <circle cx="320" cy="40" r="5" fill="#34d399"/><text x="330" y="35" fontSize="12">叙事放大</text>
+                  <circle cx="520" cy="50" r="5" fill="#10b981"/><text x="530" y="45" fontSize="12">奖励触发</text>
+                </svg>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      ) },
+      { id: 'kernel', title: '5. 底层抽象规则沙盘', tags:['tech'], content: (
         <>
-          <Accordion type="single" collapsible>
-            <AccordionItem value="sem">
-              <AccordionTrigger>4.1 事件语义转译（Intent Graph）</AccordionTrigger>
-              <AccordionContent>
-                <p className="mb-2">将宏观事件映射为中观任务，再拆解为微观行为序列。</p>
-                <p>示例：缺粮 → Sims “寻找/交易/求助” → 微观“集市交易”或“战斗抢粮”。</p>
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="rules">
-              <AccordionTrigger>4.2 规则约束保持（状态同步 + 成本/延迟）</AccordionTrigger>
-              <AccordionContent>
-                <p>确保微观层不可通过外挂行为破坏宏观平衡；关键变量双向同步并附带时间/资源成本。</p>
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="emerge">
-              <AccordionTrigger>4.3 涌现控制与放大</AccordionTrigger>
-              <AccordionContent>
-                <p>检测罕见组合与关键转折（如“援军及时到达逆转战局”），在叙事与奖励层放大呈现。</p>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </>
-      )},
-      { id: "kernel", title: "5. 底层抽象规则沙盘", tags: ["tech"], content: (
-        <>
-          <ul className="space-y-1">
-            <li>原子原语：移动、获取、生产、社交、战斗、传递信息。</li>
-            <li>世界内核：状态机 + 事件驱动 + 物理/逻辑资源模型。</li>
-            <li>参考：Factorio / Dwarf Fortress / Unreal GAS。</li>
+          <ul>
+            <li>原子交互原语：移动、获取、生产、社交、战斗、传递信息。</li>
+            <li>状态机 + 事件驱动 + 物理/逻辑资源模型，参考 Factorio / Dwarf Fortress / Unreal GAS。</li>
+            <li>核心变量集：资源、情绪、关系强度、安全度、威望、科技等级。</li>
           </ul>
-          <div className="mt-4 p-4 muted rounded-xl">
-            <p className="text-sm opacity-80 mb-2">层间数据流（示意）</p>
-            <svg viewBox="0 0 800 220" className="w-full h-[220px]">
-              <defs>
-                <linearGradient id="g1" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#60a5fa"/>
-                  <stop offset="100%" stopColor="#34d399"/>
-                </linearGradient>
-              </defs>
-              <rect x="20" y="30" width="220" height="70" rx="12" fill="url(#g1)" opacity="0.2"/>
-              <text x="130" y="70" textAnchor="middle" className="fill-current">RimWorld 宏观</text>
-              <rect x="290" y="30" width="220" height="70" rx="12" fill="url(#g1)" opacity="0.2"/>
-              <text x="400" y="70" textAnchor="middle" className="fill-current">The Sims 中观</text>
-              <rect x="560" y="30" width="220" height="70" rx="12" fill="url(#g1)" opacity="0.2"/>
-              <text x="670" y="70" textAnchor="middle" className="fill-current">BG3/DOS2 微观</text>
-              <defs>
-                <marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto">
-                  <path d="M0,0 L8,4 L0,8 Z" fill="#22c55e" />
-                </marker>
-              </defs>
-              <path d="M240,65 L290,65" stroke="#22c55e" strokeWidth="3" markerEnd="url(#arrow)"/>
-              <path d="M510,65 L560,65" stroke="#22c55e" strokeWidth="3" markerEnd="url(#arrow)"/>
-              <path d="M560,95 C560,150 240,150 240,95" stroke="#93c5fd" strokeWidth="2" fill="none" markerEnd="url(#arrow)"/>
+          <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <div className="p-3 rounded-xl muted">
+              <p className="text-sm opacity-80 mb-2">变量矩阵（示例权重）</p>
+              <table>
+                <thead><tr><th>变量</th><th>影响领域</th><th>权重</th></tr></thead>
+                <tbody>
+                  <tr><td>资源</td><td>建造/军需</td><td>0.9</td></tr>
+                  <tr><td>情绪</td><td>中观行为优先级</td><td>0.6</td></tr>
+                  <tr><td>关系强度</td><td>剧情/援助概率</td><td>0.7</td></tr>
+                  <tr><td>安全度</td><td>遭遇/袭击频率</td><td>0.8</td></tr>
+                  <tr><td>威望</td><td>外交/征募上限</td><td>0.5</td></tr>
+                  <tr><td>科技等级</td><td>蓝图/技能解锁</td><td>0.65</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="p-3 rounded-xl muted">
+              <p className="text-sm opacity-80 mb-2">层间数据流（示意）</p>
+              <svg viewBox="0 0 800 220" className="w-full h-[220px]">
+                <defs>
+                  <linearGradient id="g1" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#60a5fa"/>
+                    <stop offset="100%" stopColor="#34d399"/>
+                  </linearGradient>
+                </defs>
+                <rect x="20" y="30" width="220" height="70" rx="12" fill="url(#g1)" opacity="0.2"/>
+                <text x="130" y="70" textAnchor="middle" className="fill-current">RimWorld 宏观</text>
+                <rect x="290" y="30" width="220" height="70" rx="12" fill="url(#g1)" opacity="0.2"/>
+                <text x="400" y="70" textAnchor="middle" className="fill-current">The Sims 中观</text>
+                <rect x="560" y="30" width="220" height="70" rx="12" fill="url(#g1)" opacity="0.2"/>
+                <text x="670" y="70" textAnchor="middle" className="fill-current">BG3/DOS2 微观</text>
+                <defs>
+                  <marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#22c55e" /></marker>
+                </defs>
+                <path d="M240,65 L290,65" stroke="#22c55e" strokeWidth="3" markerEnd="url(#arrow)"/>
+                <path d="M510,65 L560,65" stroke="#22c55e" strokeWidth="3" markerEnd="url(#arrow)"/>
+                <path d="M560,95 C560,150 240,150 240,95" stroke="#93c5fd" strokeWidth="2" fill="none" markerEnd="url(#arrow)"/>
+              </svg>
+            </div>
+          </div>
+        </>
+      ) },
+      { id: 'events', title: '6. 事件系统', tags:['design','tech'], content: (
+        <>
+          <ul>
+            <li>类型：常规事件（中小任务）、副本事件（多环节大型任务集群）。</li>
+            <li>结构：唯一 ID、名称、前端描述（AI 生成）、后端描述（AI 推理用）、建议技能、演出机制。</li>
+            <li>交互模式：快速决策（派随从）、沉浸体验（AI 自然语言演出/战斗/建造）。</li>
+            <li>预设演出规则：战斗演出、建造演出、自然语言演出（mini DND 框架）。</li>
+            <li>世界 AI：记录并延续世界状态，独立于 NPC 人设。</li>
+          </ul>
+          <div className="mt-3">
+            <table>
+              <thead><tr><th>事件类型</th><th>触发条件</th><th>典型输出</th><th>回流变量</th></tr></thead>
+              <tbody>
+                <tr><td>常规事件</td><td>资源阈值、关系阈值</td><td>派遣随从、交易、求助</td><td>资源、关系、情绪</td></tr>
+                <tr><td>副本事件</td><td>叙事锚点、危机升级</td><td>战斗/建造多阶段流程</td><td>安全度、威望、科技</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) },
+      { id: 'companions', title: '7. 角色与随从系统', tags:['design'], content: (
+        <>
+          <ul>
+            <li>生成机制：Contextual Engineering（玩家喂数据+标注）→ 生成随从人设与技能树。</li>
+            <li>属性：基本属性（士气、力量、智力、魅力等）+ 额外/特殊属性（可扩展）。</li>
+            <li>性格：名称+描述，影响决策 Prompt。</li>
+            <li>关系网：友情/亲情/爱情 + 共同回忆 + 性格匹配。</li>
+            <li>物品：无限制 Inventory，AI 知道物品用途。</li>
+            <li>状态与倾向：基于 The Sims 的 Needs 系统，动态影响决策。</li>
+            <li>记忆系统：短期（Working Memory）/ 长期（Diary System）/ 见闻系统（K&B + 感官数据 + Influence Bridge）。</li>
+          </ul>
+          <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <div>
+              <table>
+                <thead><tr><th>属性</th><th>用途</th></tr></thead>
+                <tbody>
+                  <tr><td>士气</td><td>稳定性评估、逃跑/叛变阈值</td></tr>
+                  <tr><td>力量/智力/魅力</td><td>战斗/制作/谈判加成</td></tr>
+                  <tr><td>特殊属性</td><td>解锁独特事件或技能</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <table>
+                <thead><tr><th>记忆类型</th><th>保存内容</th></tr></thead>
+                <tbody>
+                  <tr><td>短期</td><td>当前目标、最近交互</td></tr>
+                  <tr><td>长期</td><td>生平关键节点、成长轨迹</td></tr>
+                  <tr><td>见闻</td><td>世界事实、传闻可信度</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      ) },
+      { id: 'systems', title: '8. 战斗、建造与经济系统', tags:['design'], content: (
+        <ul>
+          <li>战斗：BG3 战术框架 + DOS2 环境互动。</li>
+          <li>建造：RimWorld 式布局（低优先）。</li>
+          <li>经济：NPC 打工、建筑营收、增量收益循环。</li>
+        </ul>
+      ) },
+      { id: 'anchors', title: '9. 叙事锚点与涌现回放系统', tags:['design'], content: (
+        <>
+          <ul>
+            <li>宏观事件生成叙事锚点 → AI 可复现微观副本。</li>
+            <li>副本可包含动态插入（援军抵达、敌方反攻）。</li>
+            <li>战役过程生成 AI 小说，供回顾、保存、分享或改编。</li>
+          </ul>
+          <div className="mt-3 p-3 rounded-xl muted">
+            <svg viewBox="0 0 760 120" className="w-full h-[120px]">
+              <rect x="20" y="40" width="140" height="40" rx="10" fill="#e2e8f0" className="dark:fill-slate-700"/>
+              <text x="90" y="65" textAnchor="middle" fontSize="12">宏观决策</text>
+              <path d="M160 60 L220 60" stroke="#22c55e" strokeWidth="3"/>
+              <rect x="220" y="30" width="160" height="60" rx="10" fill="#e2e8f0" className="dark:fill-slate-700"/>
+              <text x="300" y="65" textAnchor="middle" fontSize="12">叙事锚点</text>
+              <path d="M380 60 L440 60" stroke="#22c55e" strokeWidth="3"/>
+              <rect x="440" y="20" width="160" height="80" rx="10" fill="#e2e8f0" className="dark:fill-slate-700"/>
+              <text x="520" y="55" textAnchor="middle" fontSize="12">微观副本</text>
+              <path d="M600 60 L660 60" stroke="#22c55e" strokeWidth="3"/>
+              <rect x="660" y="40" width="80" height="40" rx="10" fill="#e2e8f0" className="dark:fill-slate-700"/>
+              <text x="700" y="65" textAnchor="middle" fontSize="12">回放</text>
             </svg>
           </div>
         </>
-      )},
-      { id: "vars", title: "6. 核心变量集", tags: ["tech", "design"], content: (
-        <ul className="space-y-1">
-          <li>资源、情绪、关系强度、安全度、威望、科技等级（<b>三层共享</b>）。</li>
-          <li>用于保证跨层因果可追溯、可解释、可复盘。</li>
-        </ul>
-      )},
-      { id: "events", title: "7. 事件系统", tags: ["design", "tech"], content: (
+      ) },
+      { id: 'loop', title: '10. 玩法循环', tags:['design'], content: (
         <>
-          <p className="mb-2">核心玩法：派遣随从（或亲自出征）解决大小事件。</p>
-          <ul className="space-y-1">
-            <li>事件属性：ID、名称、前端描述（AI生成）、后端描述（AI推理题面）、建议技能、演出机制。</li>
-            <li>类型：常规事件（中小任务）/ 副本事件（大型多环节集群）。</li>
-            <li>交互：<b>快速决策</b>（直接派遣） / <b>沉浸体验</b>（AI自然语言演出/微观副本）。</li>
-            <li>演出：战斗演出 / 建造演出 / 自然语言演出（mini DND DM）。</li>
-            <li>世界AI：记录客观事件，持续更新世界设定。</li>
+          <ol className="pl-5">
+            <li>宏观层战略决策 → 触发跨层事件。</li>
+            <li>中观层 AI 执行计划 → 社交与情绪波动。</li>
+            <li>微观层 战术战斗/剧情体验。</li>
+            <li>事件结果回流 → 核心变量更新 → 世界状态变化。</li>
+            <li>回放与 UGC：玩家可保存/改编战役卡片。</li>
+          </ol>
+          <div className="mt-3 p-3 rounded-xl muted">
+            <svg viewBox="0 0 700 130" className="w-full h-[130px]">
+              <defs><marker id="arr" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#22c55e"/></marker></defs>
+              <rect x="20" y="20" width="140" height="40" rx="10" fill="#e2e8f0" className="dark:fill-slate-700"/>
+              <text x="90" y="45" textAnchor="middle" fontSize="12">宏观决策</text>
+              <path d="M160 40 L220 40" stroke="#22c55e" strokeWidth="3" marker-end="url(#arr)"/>
+              <rect x="220" y="20" width="140" height="40" rx="10" fill="#e2e8f0" className="dark:fill-slate-700"/>
+              <text x="290" y="45" textAnchor="middle" fontSize="12">中观执行</text>
+              <path d="M360 40 L420 40" stroke="#22c55e" strokeWidth="3" marker-end="url(#arr)"/>
+              <rect x="420" y="20" width="140" height="40" rx="10" fill="#e2e8f0" className="dark:fill-slate-700"/>
+              <text x="490" y="45" textAnchor="middle" fontSize="12">微观体验</text>
+              <path d="M560 40 L620 40" stroke="#22c55e" strokeWidth="3" marker-end="url(#arr)"/>
+              <rect x="620" y="20" width="60" height="40" rx="10" fill="#e2e8f0" className="dark:fill-slate-700"/>
+              <text x="650" y="45" textAnchor="middle" fontSize="12">回流</text>
+            </svg>
+          </div>
+        </>
+      ) },
+      { id: 'ugc', title: '11. UGC 与生态', tags:['pitch'], content: (
+        <>
+          <p className="font-medium">全景 UGC 编辑能力</p>
+          <ul>
+            <li>玩家可在宏观/中观/微观任一层定义世界设定、规则、事件、角色信息，开放式编辑。</li>
+            <li>依赖底层沙盘与跨层协议，UGC 可在各层无缝运作，支持原创幻想或复刻历史。</li>
+            <li>不止改对话/任务，还能改经济、科技、战斗逻辑与 AI 决策，构建个性化宇宙。</li>
+          </ul>
+          <ul className="mt-2">
+            <li>战役卡片：小说 + 地图 + 事件链，可改编分享。</li>
+            <li>玩家可编辑的协议：可直接调整 Intent Graph 与规则拼接逻辑，推动社区演化。</li>
+            <li>跨世界体验：将自创规则与设定打包成“世界模板”，供导入或在市场分发。</li>
           </ul>
         </>
-      )},
-      { id: "anchors", title: "8. 叙事锚点 & 涌现回放", tags: ["design"], content: (
+      ) },
+      { id: 'agent', title: '（附注）Agentic Gameplay', tags:['pitch'], content: (
         <>
-          <p className="mb-2">宏观事件生成可进入的微观副本入口；AI 复现战役流程并生成小说回放。</p>
-          <ul className="space-y-1">
-            <li>动态插入：援军到达、敌方反攻、天气/地形变更等。</li>
-            <li>回放形式：关键帧时间线 + 变量变化 + 二次游玩入口。</li>
-            <li>UGC：战役卡片（小说+地图+事件链）可保存、改编、分享。</li>
+          <p>项目早期构想的保留要素，非当前主心骨，但具备扩展潜力。</p>
+          <ul>
+            <li>把现实任务映射为游戏事件，如“完成报告”→“召集 NPC 学者编纂史书”。</li>
+            <li>以游戏化包装与 NPC 协作，把现实执行过程嵌入玩法循环。</li>
+            <li>未来可在接入现实数据后，实现 REAL → SIM → REAL 的双向任务流。</li>
           </ul>
         </>
-      )},
-      { id: "companions", title: "9. 角色与随从系统", tags: ["design"], content: (
+      ) },
+      { id: 'value', title: '12. 项目价值点', tags:['pitch'], content: (
         <>
-          <p className="mb-2">招募/创建：<b>Contextual Engineering</b>（玩家喂数据/标注 → 人设与技能树）。</p>
-          <ul className="space-y-1">
-            <li>属性：士气（稳定性评估）、力量、智力、魅力；可扩展的额外/特殊属性。</li>
-            <li>性格：名称 + 描述，影响 AI 决策 Prompt。</li>
-            <li>关系网：友情/亲情/爱情 + 共同回忆 + 性格匹配；与见闻系统区分。</li>
-            <li>持有物：无限制 Inventory；AI 知晓物品用途。</li>
-            <li>状态与倾向：The Sims 风格 Needs，动态影响行为优先级。</li>
-            <li>记忆：短期（Working Memory）/ 长期（Diary）/ 见闻（K&B + 感官 + Influence Bridge）。</li>
+          <ul>
+            <li>技术亮点：AI 跨层协议、Intent Graph、世界状态同步。</li>
+            <li>玩法亮点：三层无缝切换、因果链可见、AI 叙事复现。</li>
+            <li>商业模式：基础包 + UGC 市场 + 高级 AI 订阅。</li>
+            <li>差异化：首个将 RimWorld–Sims–BG3 融合为可编排涌现沙盘的产品；首个 AI Native Gameplay Agent 产品。</li>
           </ul>
+          <div className="mt-3">
+            <table>
+              <thead><tr><th>价值维度</th><th>卖点</th><th>证据/机制</th></tr></thead>
+              <tbody>
+                <tr><td>技术</td><td>跨层协议</td><td>状态同步与成本延迟模型</td></tr>
+                <tr><td>玩法</td><td>无缝切换</td><td>叙事锚点 → 微观副本 → 回流</td></tr>
+                <tr><td>社区</td><td>UGC 演化</td><td>可编辑 Intent Graph 与世界模板</td></tr>
+                <tr><td>商业</td><td>可持续收入</td><td>基础包 + 模组市场 + 订阅</td></tr>
+              </tbody>
+            </table>
+          </div>
         </>
-      )},
-      { id: "systems", title: "10. 战斗 · 建造 · 经济", tags: ["design"], content: (
-        <ul className="space-y-1">
-          <li>战斗：BG3 战术框架 + DOS2 环境互动（高低差/表面/控场门槛）。</li>
-          <li>建造：RimWorld 式设施布局（早期低优）。</li>
-          <li>经济：NPC 打工、建筑营收、增量收益循环。</li>
-        </ul>
-      )},
-      { id: "loop", title: "11. 玩法循环", tags: ["design"], content: (
-        <ol className="space-y-1 list-decimal pl-5">
-          <li>宏观：战略决策 → 触发跨层事件。</li>
-          <li>中观：个体 AI 执行计划 → 社交/情绪波动。</li>
-          <li>微观：战术战斗/剧情体验。</li>
-          <li>结果回流：核心变量更新，影响世界状态。</li>
-          <li>回放与UGC：保存/改编战役卡片。</li>
-        </ol>
-      )},
-      { id: "ugc", title: "12. UGC 与生态", tags: ["pitch"], content: (
-        <ul className="space-y-1">
-          <li>战役卡片：小说 + 地图 + 事件链，可一键分享。</li>
-          <li>创作工具：Intent Graph 可视编排面板，玩家扩展规则拼接。</li>
-          <li>生态循环：创作者 → 玩法模组 → 市场分发（官方精选扶持）。</li>
-        </ul>
-      )},
-      { id: "value", title: "13. Pitch 价值点", tags: ["pitch"], content: (
-        <ul className="space-y-1">
-          <li>技术亮点：跨层协议、Intent Graph、世界状态同步、AI 叙事复现。</li>
-          <li>玩法亮点：三层无缝切换、因果链可见、动态副本与小说回放。</li>
-          <li>商业模式：基础包 + UGC 市场 + 高级 AI 订阅。</li>
-          <li>差异化：首个将 RimWorld–Sims–BG3 融合为可编排涌现沙盘的产品。</li>
-        </ul>
-      )}
+      ) },
     ];
 
     function PitchInteractivePage() {
       const [query, setQuery] = useState("");
-      const [audience, setAudience] = useState({ pitch: true, design: true, tech: true });
       const ids = outline.map(o => o.id);
       const current = useTOCHighlight(ids);
       const hi = useHighlight(query);
 
-      const filtered = useMemo(() => {
-        return outline.filter(sec => {
-          const tagOk = sec.tags.some(t => audience[t]);
-          if (!tagOk) return false;
-          if (!query) return true;
-          const titleText = typeof sec.title === 'string' ? sec.title : '';
-          const contentText = typeof sec.content === 'string' ? sec.content : '';
-          const text = (titleText + ' ' + contentText).toLowerCase();
-          return text.includes(query.toLowerCase());
-        });
-      }, [query, audience]);
+      // 保留搜索，但去掉筛选：始终展示全部章节
+      const filtered = outline.filter(sec => {
+        if (!query) return true;
+        const titleText = typeof sec.title === 'string' ? sec.title : '';
+        const contentText = typeof sec.content === 'string' ? sec.content : '';
+        const text = (titleText + ' ' + contentText).toLowerCase();
+        return text.includes(query.toLowerCase());
+      });
 
       const copyLink = async (id) => {
         const url = new URL(window.location.href);
         url.hash = id;
-        try { await navigator.clipboard.writeText(url.toString()); alert('段落链接已复制'); } catch { /* ignore */ }
+        try { await navigator.clipboard.writeText(url.toString()); alert('段落链接已复制'); } catch {}
       };
 
       useEffect(() => {
         if (window.location.hash) {
           const id = window.location.hash.replace('#','');
-          setTimeout(() => {
-            document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 100);
+          setTimeout(() => { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
         }
       }, []);
 
@@ -384,21 +535,6 @@
                       <a key={s.id} href={`#${s.id}`} className={`block text-sm rounded px-2 py-1 transition ${current===s.id?"bg-slate-100 dark:bg-slate-800 font-medium":"hover:bg-slate-100 dark:hover:bg-slate-800"}`}>{s.title}</a>
                     ))}
                   </nav>
-                  <div className="mt-4 space-y-2">
-                    <p className="text-xs opacity-70">受众筛选</p>
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Pitch</span>
-                      <Switch checked={audience.pitch} onChange={(v)=>setAudience(a=>({...a,pitch:!!v}))}/>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span>设计</span>
-                      <Switch checked={audience.design} onChange={(v)=>setAudience(a=>({...a,design:!!v}))}/>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span>技术</span>
-                      <Switch checked={audience.tech} onChange={(v)=>setAudience(a=>({...a,tech:!!v}))}/>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             </aside>
@@ -410,7 +546,6 @@
                   <CardHeader className="flex flex-row items-center justify-between gap-2">
                     <CardTitle className="text-lg">{hi(sec.title)}</CardTitle>
                     <div className="flex items-center gap-2">
-                      {sec.tags.map(t => <span key={t} className="badge capitalize">{t}</span>)}
                       <Button className="btn-ghost" onClick={()=>copyLink(sec.id)} title="复制段落链接"><LinkIcon className="w-4 h-4"/></Button>
                     </div>
                   </CardHeader>
